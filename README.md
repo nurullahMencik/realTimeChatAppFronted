@@ -71,8 +71,10 @@ frontend/
 ## Notlar
 
 - Sunucu Render'ın ücretsiz planında çalıştığı için bir süre kullanılmayınca uykuya
-  geçer. Bu durumda ilk bağlantı bir dakikayı bulabilir; arayüz bunu bir uyarıyla
-  gösterir ve bağlantı kurulana kadar "Sohbete Başla" butonu pasif kalır.
+  geçebilir. Bu durumda "Sohbete Başla" butonu sizi bekletmez: giriş isteği sıraya
+  alınır, buton geçen süreyi sayar ("Sunucu uyandırılıyor... 12sn") ve bağlantı
+  kurulur kurulmaz odaya otomatik girilir. Sunucuyu uyanık tutmak için backend
+  reposunda 10 dakikada bir çalışan bir GitHub Actions işi vardır.
 - Kullanıcı adı ve oda bilgisi `sessionStorage`'da tutulur, böylece sayfa
   yenilendiğinde sohbetten düşmezsiniz.
 

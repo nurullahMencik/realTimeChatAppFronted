@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { setRoom, setUsername } from "@/redux/chatSlice";
 import { useSocket } from "@/hooks/useSocket";
+import { wakeServer } from "@/lib/socket";
 
-// Sunucu uykudaysa (Render ücretsiz plan) uyanması zaman alır.
-// Bu süreyi aşan denemelerde kullanıcıya açık bir hata gösteririz.
+// Odaya katılma onayı için beklenecek süre.
 const JOIN_TIMEOUT_MS = 15000;
+// Sunucunun uyanması için tanınan toplam süre; bu süre aşılırsa hata gösterilir.
+const WAKE_TIMEOUT_MS = 150000;
 
 const JoinForm = () => {
   const router = useRouter();
@@ -16,50 +18,54 @@ const JoinForm = () => {
   const { socket, status } = useSocket();
   const { username, room } = useSelector((state) => state.chat);
 
-  const [joining, setJoining] = useState(false);
+  // idle: bekleyen işlem yok | waiting: sunucunun uyanması bekleniyor | joining: odaya giriliyor
+  const [phase, setPhase] = useState("idle");
+  const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState("");
-  const [slowConnection, setSlowConnection] = useState(false);
+  const startedAt = useRef(0);
 
-  // Bağlantı 4 saniyeden uzun sürerse sunucunun uyandığını kullanıcıya söyle.
+  const isConnected = status === "connected";
+  const isBusy = phase !== "idle";
+  const canSubmit = !isBusy && username.trim() !== "" && room.trim() !== "";
+
+  // Sayfa açılır açılmaz sunucuyu uyandırmaya başla; kullanıcı formu
+  // doldururken sunucu ayağa kalkmış olur.
   useEffect(() => {
-    if (status === "connected") {
-      setSlowConnection(false);
-      return;
-    }
-    const timer = setTimeout(() => setSlowConnection(true), 4000);
-    return () => clearTimeout(timer);
-  }, [status]);
+    wakeServer();
+  }, []);
 
-  const isReady = status === "connected";
-  const canSubmit =
-    isReady && !joining && username.trim() !== "" && room.trim() !== "";
+  // Bekleme sırasında geçen süreyi göster: ekran donmuş gibi görünmesin.
+  useEffect(() => {
+    if (!isBusy) return;
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    setError("");
+    const timer = setInterval(() => {
+      const seconds = Math.floor((Date.now() - startedAt.current) / 1000);
+      setElapsed(seconds);
 
-    if (!socket || !isReady) {
-      setError("Sunucuya henüz bağlanılamadı, lütfen birkaç saniye bekleyin.");
-      return;
-    }
-    if (username.trim() === "" || room.trim() === "") {
-      setError("Adınızı ve oda adını yazmanız gerekiyor.");
-      return;
-    }
+      if (phase === "waiting" && Date.now() - startedAt.current > WAKE_TIMEOUT_MS) {
+        setPhase("idle");
+        setError(
+          "Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin."
+        );
+      }
+    }, 1000);
 
-    setJoining(true);
+    return () => clearInterval(timer);
+  }, [isBusy, phase]);
+
+  const joinRoom = useCallback(() => {
+    if (!socket) return;
+
+    setPhase("joining");
 
     // socket.timeout: sunucudan onay gelmezse callback hata ile çağrılır.
     // Eski sürümdeki sorun buydu: onay gelmeyince sayfa hiç açılmıyordu.
     socket
       .timeout(JOIN_TIMEOUT_MS)
       .emit("room", { room: room.trim() }, (timeoutError, response) => {
-        setJoining(false);
-
         if (timeoutError || response?.status !== "ok") {
-          setError(
-            "Odaya bağlanılamadı. Sunucu uyanıyor olabilir, birkaç saniye sonra tekrar deneyin."
-          );
+          setPhase("idle");
+          setError("Odaya bağlanılamadı, lütfen tekrar deneyin.");
           return;
         }
 
@@ -67,6 +73,38 @@ const JoinForm = () => {
         dispatch(setRoom(room.trim()));
         router.push("/chat");
       });
+  }, [socket, room, username, dispatch, router]);
+
+  // Kullanıcı butona bastığında sunucu henüz uyanmadıysa bekleriz;
+  // bağlantı kurulur kurulmaz odaya giriş kendiliğinden yapılır.
+  useEffect(() => {
+    if (phase === "waiting" && isConnected) joinRoom();
+  }, [phase, isConnected, joinRoom]);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    setError("");
+
+    if (username.trim() === "" || room.trim() === "") {
+      setError("Adınızı ve oda adını yazmanız gerekiyor.");
+      return;
+    }
+
+    startedAt.current = Date.now();
+    setElapsed(0);
+
+    if (isConnected) {
+      joinRoom();
+    } else {
+      wakeServer();
+      setPhase("waiting");
+    }
+  };
+
+  const buttonLabel = () => {
+    if (phase === "waiting") return `Sunucu uyandırılıyor... ${elapsed}sn`;
+    if (phase === "joining") return "Odaya giriliyor...";
+    return "Sohbete Başla";
   };
 
   return (
@@ -119,10 +157,11 @@ const JoinForm = () => {
           </p>
         )}
 
-        {!isReady && slowConnection && !error && (
+        {phase === "waiting" && (
           <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
-            Sunucu uyandırılıyor. Ücretsiz sunucu bir süre kullanılmayınca
-            uykuya geçtiği için ilk bağlantı bir dakikayı bulabilir.
+            Sunucu ücretsiz planda çalıştığı için bir süre kullanılmayınca
+            uykuya geçiyor. Uyanması yarım dakikayı bulabilir; bağlantı kurulur
+            kurulmaz odaya otomatik gireceksiniz.
           </p>
         )}
 
@@ -131,11 +170,7 @@ const JoinForm = () => {
           disabled={!canSubmit}
           className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed p-3 rounded-lg text-white font-semibold transition-colors cursor-pointer"
         >
-          {!isReady
-            ? "Sunucuya bağlanılıyor..."
-            : joining
-            ? "Odaya giriliyor..."
-            : "Sohbete Başla"}
+          {buttonLabel()}
         </button>
       </form>
     </main>
