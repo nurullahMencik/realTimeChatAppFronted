@@ -1,5 +1,5 @@
 {
-  "name": "a",
+  "name": "realtime-chat-frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -23,5 +23,6 @@
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
     "tailwindcss": "^4"
-  }
+  },
+  "description": "Socket.io tabanlı gerçek zamanlı sohbet uygulamasının Next.js arayüzü."
 }

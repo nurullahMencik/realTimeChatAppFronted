@@ -1,33 +1,82 @@
- ## Gerçek Zamanlı Sohbet Uygulaması (Real-Time Chat App)
-Bu proje, Next.js ve React kullanarak geliştirilmiş, çok kullanıcılı gerçek zamanlı bir sohbet uygulamasıdır. Socket.io ile anlık mesajlaşma yeteneği kazanırken, Redux Toolkit ile durum yönetimi ve Tailwind CSS ile modern bir arayüz sunar.
+# Gerçek Zamanlı Sohbet Uygulaması — Frontend
 
-## Canlı Bağlantı
- Projenin canlı versiyonuna https://real-time-chat-app-f.vercel.app adresinden ulaşabilirsiniz.
+Next.js (App Router) ile geliştirilmiş, oda bazlı gerçek zamanlı sohbet arayüzü.
+Mesajlaşma Socket.io üzerinden yürür, oturum bilgisi Redux Toolkit ile yönetilir.
 
- ## Kullanılan Teknolojiler
- Frontend : Next.js, React, Redux Toolkit,Tailwind CSS
+**Canlı demo:** https://real-time-chat-app-f.vercel.app
+**Sunucu (backend) reposu:** https://github.com/nurullahMencik/realTimeChatAppBackend
 
- Backend : Node.js & Express , Socket.io
+## Nasıl çalışır?
 
-## Proje Yapısı
+1. Giriş ekranında adınızı ve bir **oda adı** yazarsınız.
+2. Aynı oda adını yazan herkes aynı sohbete düşer.
+3. Mesajlar sunucuya gider, sunucu da sadece o odadaki diğer kişilere iletir.
 
-``````
-├── client/           # Next.js uygulaması (Frontend)
-│   ├── app/
-│   ├── components/
-│   ├── redux/
-│   ├── socket.js
-│   └── ...
-├── server/           # Node.js uygulaması (Backend)
-│   ├── server.js
-│   ├── package.json
-│   └── ...
-├── package.json
-├── README.md
-└── ...`
-``````
+> Mesajlar veritabanında tutulmaz; sohbet geçmişi sayfa açık kaldığı sürece görünür.
+
+## Kullanılan teknolojiler
+
+| Katman | Teknoloji |
+| --- | --- |
+| Arayüz | Next.js 15, React 19 |
+| Durum yönetimi | Redux Toolkit, React Redux |
+| Stil | Tailwind CSS 4 |
+| Gerçek zamanlı iletişim | Socket.io Client |
+
+## Kurulum
+
+```bash
+npm install
+cp .env.example .env.local   # gerekirse sunucu adresini değiştirin
+npm run dev
+```
+
+Uygulama http://localhost:3000 adresinde açılır.
+
+### Ortam değişkenleri
+
+| Değişken | Açıklama | Varsayılan |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SOCKET_URL` | Socket.io sunucusunun adresi | `https://realtimechatappb.onrender.com` |
+
+Sunucuyu da lokalde çalıştırıyorsanız `.env.local` içine şunu yazın:
+
+```
+NEXT_PUBLIC_SOCKET_URL=http://localhost:5000
+```
+
+## Proje yapısı
+
+```
+frontend/
+├── app/
+│   ├── (routes)/
+│   │   ├── (home)/
+│   │   │   ├── _components/JoinForm.jsx    # Ad + oda girişi, bağlantı durumu
+│   │   │   └── page.jsx
+│   │   └── chat/
+│   │       ├── _components/ChatRoom.jsx    # Sohbet ekranı
+│   │       ├── _components/MessageBubble.jsx
+│   │       └── page.jsx
+│   ├── globals.css
+│   └── layout.js
+├── components/ReduxProvider.jsx            # Store + oturum geri yükleme
+├── hooks/useSocket.js                      # Socket + bağlantı durumu
+├── lib/socket.js                           # Tek socket örneği (singleton)
+└── redux/
+    ├── chatSlice.js
+    └── store.js
+```
+
+## Notlar
+
+- Sunucu Render'ın ücretsiz planında çalıştığı için bir süre kullanılmayınca uykuya
+  geçer. Bu durumda ilk bağlantı bir dakikayı bulabilir; arayüz bunu bir uyarıyla
+  gösterir ve bağlantı kurulana kadar "Sohbete Başla" butonu pasif kalır.
+- Kullanıcı adı ve oda bilgisi `sessionStorage`'da tutulur, böylece sayfa
+  yenilendiğinde sohbetten düşmezsiniz.
 
 ## Hazırlayan
-Nurullah Mencik - nurullahmencik42@gmail.com
 
-portfolio : http://konyaereglisatis.com/portfolio
+Nurullah Mencik — nurullahmencik42@gmail.com
+Portfolyo: http://konyaereglisatis.com/portfolio

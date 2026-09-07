@@ -1,10 +1,5 @@
-import Room from "./_components/Room";
-
+import JoinForm from "./_components/JoinForm";
 
 export default function Home() {
-  return (
-    <div>
-      <Room/>
-    </div>
-  );
+  return <JoinForm />;
 }

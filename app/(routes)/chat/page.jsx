@@ -1,12 +1,5 @@
-import React from "react";
+import ChatRoom from "./_components/ChatRoom";
 
-import Chat from "./_components/Chat";
-const ChatPage = () => {
-  return (
-    <div>
-      <Chat/>
-    </div>
-  );
-};
-
-export default ChatPage;
+export default function ChatPage() {
+  return <ChatRoom />;
+}
